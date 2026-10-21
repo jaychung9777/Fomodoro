@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>뽀모도로 타이머</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f4ef;--card:#fff;--tx:#23221f;--mut:#7a766d;--focus:#e5533d;--rest:#2f9e8f;--line:#e6e2d8}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171716;--card:#232321;--tx:#f1efe8;--mut:#a09b90;--focus:#ff7a62;--rest:#4cc2b2;--line:#34332f}}
+:root[data-theme="dark"]{--bg:#171716;--card:#232321;--tx:#f1efe8;--mut:#a09b90;--focus:#ff7a62;--rest:#4cc2b2;--line:#34332f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;display:flex;justify-content:center;min-height:100vh}
+main{width:100%;max-width:440px;padding:20px 16px 40px}
+h1{font-size:20px;margin:4px 0 2px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+.lbl{font-size:12px;color:var(--mut);margin-bottom:8px;display:block;font-weight:600}
+input[type=text]{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--tx);border-radius:999px;padding:8px 12px;font-size:13px;cursor:pointer}
+.chip.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.dwrap{position:relative;width:240px;margin:6px auto 0;touch-action:none}
+svg{display:block;width:100%}
+.mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center}
+.mid b{font-size:34px;font-variant-numeric:tabular-nums}
+.mid span{font-size:12px;color:var(--mut)}
+.leg{display:flex;justify-content:center;gap:18px;font-size:14px;margin-top:10px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.row{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:10px}
+.step{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--tx);font-size:20px;cursor:pointer}
+.num{font-size:28px;font-weight:700;min-width:60px;text-align:center}
+.bar{display:flex;gap:3px;margin-top:12px;height:26px}
+.set{flex:1;display:flex;border-radius:6px;overflow:hidden}
+.set div{height:100%}
+.tot{font-size:13px;color:var(--mut);text-align:center;margin-top:8px}
+.btn{width:100%;padding:15px;border:0;border-radius:14px;background:var(--focus);color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+.btn.sec{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
+.ctrls{display:flex;gap:8px}
+.ctrls .btn{flex:1}
+#run{display:none;text-align:center}
+.ph{font-size:15px;font-weight:700;margin:4px 0 10px}
+.time{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums}
+.hint{font-size:12px;color:var(--mut);text-align:center;margin-top:6px}
+</style>
+</head>
+<body>
+<main>
+<h1>뽀모도로 타이머</h1>
+<p class="sub">집중과 휴식의 리듬을 직접 설계하세요</p>
+
+<div id="setup">
+ <div class="card"><label class="lbl" for="nm">이름</label><input type="text" id="nm" placeholder="이름을 입력하세요" maxlength="20"></div>
+
+ <div class="card">
+  <span class="lbl">1세트 전체 시간</span>
+  <div class="chips" id="totals"></div>
+ </div>
+
+ <div class="card">
+  <span class="lbl">집중 : 휴식 — 원을 돌려 비율을 조절하세요 (5분 단위)</span>
+  <div class="dwrap" id="dw">
+   <svg viewBox="0 0 200 200" id="svg">
+    <circle cx="100" cy="100" r="80" fill="none" stroke="var(--rest)" stroke-width="26"/>
+    <circle id="arc" cx="100" cy="100" r="80" fill="none" stroke="var(--focus)" stroke-width="26" transform="rotate(-90 100 100)"/>
+    <circle id="knob" r="9" fill="#fff" stroke="var(--tx)" stroke-width="3"/>
+   </svg>
+   <div class="mid"><b id="ratio"></b><span id="tot2"></span></div>
+  </div>
+  <div class="leg"><span><i style="background:var(--focus)"></i>집중 <b id="fv"></b>분</span><span><i style="background:var(--rest)"></i>휴식 <b id="bv"></b>분</span></div>
+  <div class="row"><button class="step" id="fm" aria-label="집중 5분 감소">−</button><span style="font-size:13px;color:var(--mut)">집중 시간 ±5분</span><button class="step" id="fp" aria-label="집중 5분 증가">+</button></div>
+ </div>
+
+ <div class="card">
+  <span class="lbl" style="text-align:center">반복 횟수</span>
+  <div class="row"><button class="step" id="sm" aria-label="횟수 감소">−</button><div class="num"><span id="sv"></span>세트</div><button class="step" id="sp" aria-label="횟수 증가">+</button></div>
+  <div class="bar" id="bar"></div>
+  <div class="tot" id="sum"></div>
+ </div>
+
+ <button class="btn" id="go">시작하기</button>
+</div>
+
+<div id="run">
+ <div class="card">
+  <div class="ph" id="ph"></div>
+  <div class="dwrap" style="touch-action:auto">
+   <svg viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="86" fill="none" stroke="var(--line)" stroke-width="12"/>
+    <circle id="prog" cx="100" cy="100" r="86" fill="none" stroke="var(--focus)" stroke-width="12" stroke-linecap="round" transform="rotate(-90 100 100)"/>
+   </svg>
+   <div class="mid"><div class="time" id="tm"></div></div>
+  </div>
+  <div class="bar" id="rbar"></div>
+  <div class="tot" id="rsum"></div>
+ </div>
+ <div class="ctrls">
+  <button class="btn" id="pp">일시정지</button>
+  <button class="btn sec" id="skip">건너뛰기</button>
+  <button class="btn sec" id="stop">종료</button>
+ </div>
+ <p class="hint">탭을 열어 둔 채로 사용하세요</p>
+</div>
+</main>
+
+<script>
+var TOTALS=[30,40,45,50,60,120,240];
+var S={total:60,focus:50,sets:4,name:''};
+var $=function(i){return document.getElementById(i)};
+try{var sv=JSON.parse(localStorage.getItem('pomo')||'null');if(sv&&sv.total){S=sv}}catch(e){}
+var C=2*Math.PI*80;
+
+function fmt(m){var h=Math.floor(m/60),r=m%60;return h?(r?h+'시간 '+r+'분':h+'시간'):r+'분'}
+function save(){try{localStorage.setItem('pomo',JSON.stringify(S))}catch(e){}}
+function clampF(){S.focus=Math.max(5,Math.min(S.total-5,Math.round(S.focus/5)*5))}
+
+function render(){
+ clampF();
+ var f=S.focus,b=S.total-f,fr=f/S.total;
+ $('totals').innerHTML=TOTALS.map(function(t){return '<button class="chip'+(t===S.total?' on':'')+'" data-t="'+t+'">'+fmt(t)+'</button>'}).join('');
+ $('arc').setAttribute('stroke-dasharray',(C*fr)+' '+C);
+ var a=fr*2*Math.PI-Math.PI/2;
+ $('knob').setAttribute('cx',100+80*Math.cos(a));$('knob').setAttribute('cy',100+80*Math.sin(a));
+ $('ratio').textContent=f+' : '+b;$('tot2').textContent='총 '+fmt(S.total);
+ $('fv').textContent=f;$('bv').textContent=b;$('sv').textContent=S.sets;
+ var seg='';for(var i=0;i<S.sets;i++){seg+='<div class="set"><div style="width:'+fr*100+'%;background:var(--focus)"></div><div style="flex:1;background:var(--rest)"></div></div>'}
+ $('bar').innerHTML=seg;
+ $('sum').textContent='전체 '+fmt(S.total*S.sets)+' · 집중 '+fmt(f*S.sets)+' + 휴식 '+fmt(b*S.sets);
+ save();
+}
+$('totals').onclick=function(e){var t=e.target.getAttribute('data-t');if(t){S.total=+t;render()}};
+$('fm').onclick=function(){S.focus-=5;render()};
+$('fp').onclick=function(){S.focus+=5;render()};
+$('sm').onclick=function(){S.sets=Math.max(1,S.sets-1);render()};
+$('sp').onclick=function(){S.sets=Math.min(12,S.sets+1);render()};
+$('nm').value=S.name||'';
+$('nm').oninput=function(){S.name=this.value;save()};
+
+var drag=false;
+function pt(e){
+ var r=$('svg').getBoundingClientRect(),x=e.clientX-(r.left+r.width/2),y=e.clientY-(r.top+r.height/2);
+ var ang=Math.atan2(y,x)+Math.PI/2;if(ang<0)ang+=2*Math.PI;
+ S.focus=Math.round(S.total*ang/(2*Math.PI)/5)*5;render();
+}
+$('dw').addEventListener('pointerdown',function(e){drag=true;try{this.setPointerCapture(e.pointerId)}catch(x){}pt(e)});
+$('dw').addEventListener('pointermove',function(e){if(drag)pt(e)});
+$('dw').addEventListener('pointerup',function(){drag=false});
+
+/* ---- 실행 ---- */
+var seq=[],idx=0,endAt=0,left=0,running=false,iv=null,ac=null;
+function beep(){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();[0,0.25,0.5].forEach(function(d){var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=0.15;o.connect(g);g.connect(ac.destination);o.start(ac.currentTime+d);o.stop(ac.currentTime+d+0.15)})}catch(e){}}
+function build(){
+ seq=[];for(var i=0;i<S.sets;i++){seq.push({t:'f',m:S.focus,s:i+1});seq.push({t:'b',m:S.total-S.focus,s:i+1})}
+}
+function load(i){
+ idx=i;left=seq[i].m*60;
+ var f=seq[i].t==='f',col=f?'var(--focus)':'var(--rest)';
+ $('prog').setAttribute('stroke',col);$('prog').setAttribute('stroke-dasharray',(2*Math.PI*86)+' '+(2*Math.PI*86));
+ $('ph').textContent=(S.name?S.name+'님, ':'')+seq[i].s+'/'+S.sets+'세트 · '+(f?'집중 중':'휴식 중');
+ $('ph').style.color=col;
+ var seg='';for(var k=0;k<S.sets;k++){var d=k+1<seq[i].s||(k+1===seq[i].s&&!f)?1:0;seg+='<div class="set" style="opacity:'+(k+1<seq[i].s?0.35:1)+'"><div style="width:'+S.focus/S.total*100+'%;background:var(--focus);opacity:'+(k+1===seq[i].s&&!f?0.35:1)+'"></div><div style="flex:1;background:var(--rest)"></div></div>'}
+ $('rbar').innerHTML=seg;
+ $('rsum').textContent='집중 '+S.focus+'분 · 휴식 '+(S.total-S.focus)+'분 · 총 '+S.sets+'세트';
+ draw();
+}
+function draw(){
+ var m=Math.floor(left/60),s=left%60,tot=seq[idx].m*60;
+ $('tm').textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+ $('prog').setAttribute('stroke-dashoffset',(2*Math.PI*86)*(1-left/tot));
+ document.title=$('tm').textContent+' · 뽀모도로';
+}
+function tick(){
+ left=Math.max(0,Math.round((endAt-Date.now())/1000));draw();
+ if(left<=0){beep();next()}
+}
+function next(){
+ if(idx+1>=seq.length){clearInterval(iv);running=false;$('ph').textContent='🎉 모든 세트 완료!';$('pp').textContent='처음으로';$('pp').onclick=stop;return}
+ load(idx+1);endAt=Date.now()+left*1000;
+}
+function start(){running=true;endAt=Date.now()+left*1000;iv=setInterval(tick,250);$('pp').textContent='일시정지'}
+function pause(){running=false;clearInterval(iv);$('pp').textContent='계속하기'}
+function stop(){clearInterval(iv);running=false;$('run').style.display='none';$('setup').style.display='block';document.title='뽀모도로 타이머'}
+$('go').onclick=function(){
+ build();$('setup').style.display='none';$('run').style.display='block';
+ $('pp').onclick=function(){running?pause():start()};
+ load(0);start();
+ try{ac=ac||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}
+};
+$('skip').onclick=function(){if(idx+1<seq.length){load(idx+1);if(running)endAt=Date.now()+left*1000}};
+$('stop').onclick=stop;
+render();
+</script>
+</body>
+</html>

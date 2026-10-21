@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>뽀모도로 타이머</title>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e3eedb;--card:#f4f9ef;--ink:#23442b;--sub:#5d7a62;--focus:#3f7d4e;--rest:#bfdcb9;--line:#c9dcc2;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17261b;--card:#1f3324;--ink:#e3f0dc;--sub:#9db8a1;--focus:#7fbd8a;--rest:#3b5c42;--line:#34503b}}
+:root[data-theme="dark"]{--bg:#17261b;--card:#1f3324;--ink:#e3f0dc;--sub:#9db8a1;--focus:#7fbd8a;--rest:#3b5c42;--line:#34503b}
+body.rest{--bg:#f2f8ee;--card:#fbfdf9;--focus:#8fc096;--rest:#dfeedb;--line:#e1eddc}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) body.rest{--bg:#203327;--card:#274030;--focus:#9ccfa6;--rest:#355a40;--line:#3a5c44}}
+html,body{height:100%}
+body{margin:0;font:16px/1.6 'Gowun Dodum',system-ui,sans-serif;color:var(--ink);background:var(--bg) var(--pat);transition:background-color 1s}
+.wrap{max-width:460px;margin:0 auto;padding:20px 16px 40px}
+h1,h2,b{font-family:'Gowun Batang',Georgia,serif}
+h1{font-size:26px;margin:8px 0 16px}
+h2{font-size:22px;margin:0 0 16px}
+.tabs{display:flex;gap:4px;margin-bottom:12px;overflow-x:auto}
+.tabs button{flex:1;white-space:nowrap;font:inherit;font-size:14px;padding:8px 6px;border:0;border-bottom:2px solid var(--line);background:none;color:var(--sub);cursor:pointer}
+.tabs button.on{color:var(--ink);border-color:var(--focus);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;text-align:center}
+input{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;box-sizing:border-box}
+input[type=number]{width:84px;text-align:center;font-size:20px}
+input[type=range]{accent-color:var(--focus);border:0;padding:0}
+label{display:block;text-align:left;margin:12px 0;font-size:14px;color:var(--sub)}
+label input{margin-top:4px}
+.row{display:flex;gap:14px;justify-content:center;align-items:center;margin:14px 0}
+.row label{margin:0;display:flex;align-items:center;gap:8px;font-size:16px;color:var(--ink)}
+.rw{position:relative;width:220px;margin:8px auto 16px}
+.rw svg{display:block;width:100%}
+.rw b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px}
+.dots{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0}
+.dots svg{width:34px}
+.sub{color:var(--sub);font-size:14px;margin:8px 0 0}
+.nav{display:flex;gap:10px;justify-content:space-between;margin-top:16px}
+button.btn,button.ghost{font:inherit;padding:12px 24px;border-radius:12px;cursor:pointer;border:1px solid var(--focus)}
+button.btn{background:var(--focus);color:var(--card);margin-left:auto}
+button.ghost{background:transparent;color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.key i{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 4px 0 10px;background:var(--focus)}
+.key i.r{background:var(--rest)}
+.yt{position:fixed;left:-9999px;width:200px;height:113px}
+.big{font-size:44px}
+</style>
+</head>
+<body>
+<div class="wrap"><h1>뽀모도로 타이머</h1><div id="v"></div></div>
+<script>
+const $=s=>document.querySelector(s),V=$('#v');
+const S=Object.assign({name:'',h:1,m:0,rep:4,focus:50,lf:'',lr:''},(()=>{try{return JSON.parse(localStorage.getItem('pomo'))||{}}catch(e){return{}}})());
+const T=()=>S.h*60+S.m,C=2*Math.PI*54,N=['이름','세트 시간','세트 반복','집중:휴식','배경음'];
+let st=0,R=null,M=null,AC;
+const mx=()=>Math.max(5,Math.floor((T()-5)/5)*5);
+const fit=()=>{S.focus=Math.min(Math.max(5,Math.round(S.focus/5)*5),mx())};
+const dur=m=>((m>=60?Math.floor(m/60)+'시간 ':'')+(m%60?m%60+'분':'')).trim()||'0분';
+const ring=f=>`<svg viewBox="0 0 120 120"><g fill="none" stroke-width="12" transform="rotate(-90 60 60)"><circle cx="60" cy="60" r="54" stroke="var(--rest)"/><circle id="pg" cx="60" cy="60" r="54" stroke="var(--focus)" stroke-dasharray="${f*C} ${C}"/></g></svg>`;
+const save=()=>{try{localStorage.setItem('pomo',JSON.stringify(S))}catch(e){}};
+const ok=()=>st==0?S.name.trim().length>0:st==1?T()>=10&&T()<=1440:st==2?S.rep>=1&&S.rep<=30:true;
+
+function pattern(){
+ const L=(x,y,a,s=1)=>`<use href="#l" transform="translate(${x} ${y}) rotate(${a}) scale(${s})"/>`;
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="280" height="280"><defs><path id="l" d="M0 0C6-11 24-11 34 0C24 11 6 11 0 0Z"/></defs><g opacity=".17" stroke="#4f9a5e" fill="#4f9a5e"><g fill="none" stroke-width="2" stroke-linecap="round"><path d="M0 70C50 20 90 120 140 70S230 20 280 70"/><path d="M0 210C50 160 90 260 140 210S230 160 280 210"/><path d="M140 70C152 110 124 150 140 210"/></g><g stroke="none">${L(30,52,-60)}${L(64,46,40,.8)}${L(95,98,60)}${L(118,92,-30,.9)}${L(172,58,-70)}${L(205,38,-20,.8)}${L(244,60,50)}${L(30,192,-60,.9)}${L(64,186,40)}${L(95,238,60,.8)}${L(172,198,-70,.9)}${L(205,178,-20)}${L(244,200,50,.8)}${L(146,118,20,.8)}${L(132,160,160,.8)}</g></g></svg>`;
+ document.documentElement.style.setProperty('--pat',`url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+}
+
+function setup(){
+ document.body.classList.remove('rest');
+ V.innerHTML=`<div class="tabs">${N.map((n,i)=>`<button data-i="${i}" class="${i==st?'on':''}">${n}</button>`).join('')}</div><div class="card" id="c"></div><div class="nav"><button class="ghost" id="pv" ${st?'':'hidden'}>이전</button><button class="btn" id="nx">${st==4?'시작':'다음'}</button></div>`;
+ const c=$('#c');
+ const gate=()=>{$('#nx').disabled=!ok();$('#nx').style.opacity=ok()?1:.45};
+ if(st==0){
+  c.innerHTML=`<h2>이름을 알려 주세요</h2><input id="nm" maxlength="20" placeholder="이름">`;
+  $('#nm').value=S.name;$('#nm').oninput=e=>{S.name=e.target.value;gate()};
+ }
+ if(st==1){
+  c.innerHTML=`<h2>한 세트는 얼마나 걸리나요</h2><div class="rw">${ring(1)}<b id="ct"></b></div><div class="row"><label><input id="hh" type="number" min="0" max="24"> 시간</label><label><input id="mm" type="number" min="0" max="59"> 분</label></div><p class="sub" id="er"></p>`;
+  $('#hh').value=S.h;$('#mm').value=S.m;
+  const u=()=>{S.h=Math.max(0,Math.min(24,+$('#hh').value||0));S.m=Math.max(0,Math.min(59,+$('#mm').value||0));$('#ct').textContent=dur(T());$('#er').textContent=T()<10?'10분 이상으로 설정해 주세요':T()>1440?'24시간 이하로 설정해 주세요':'';fit();gate()};
+  $('#hh').oninput=$('#mm').oninput=u;u();
+ }
+ if(st==2){
+  c.innerHTML=`<h2>세트를 몇 번 반복할까요</h2><div class="row"><button class="ghost" id="m1" aria-label="줄이기">−</button><input id="rp" type="number" min="1" max="30"><button class="ghost" id="p1" aria-label="늘리기">+</button></div><div class="dots" id="dt"></div><p class="sub" id="tt"></p>`;
+  const u=()=>{S.rep=Math.max(1,Math.min(30,+$('#rp').value||1));$('#dt').innerHTML=Array(Math.min(S.rep,12)).fill(ring(S.focus/T())).join('').replace(/id="pg"/g,'');$('#tt').textContent=`한 세트 ${dur(T())} × ${S.rep}번 = 총 ${dur(T()*S.rep)}`;gate()};
+  $('#rp').value=S.rep;$('#rp').oninput=u;
+  $('#m1').onclick=()=>{$('#rp').value=S.rep-1;u()};$('#p1').onclick=()=>{$('#rp').value=S.rep+1;u()};u();
+ }
+ if(st==3){
+  fit();
+  c.innerHTML=`<h2>집중과 휴식의 비율</h2><div class="rw">${ring(S.focus/T())}<b id="ct"></b></div><input id="rs" type="range" min="5" max="${mx()}" step="5" aria-label="집중 시간"><p class="key" id="rt"></p>`;
+  const u=()=>{S.focus=+$('#rs').value;$('#pg').setAttribute('stroke-dasharray',`${S.focus/T()*C} ${C}`);$('#ct').textContent=`${S.focus} : ${T()-S.focus}`;$('#rt').innerHTML=`<i></i>집중 ${S.focus}분<i class="r"></i>휴식 ${T()-S.focus}분`};
+  $('#rs').value=S.focus;$('#rs').oninput=u;u();
+ }
+ if(st==4){
+  c.innerHTML=`<h2>배경음</h2><p class="sub">유튜브나 음악 링크를 넣으면 해당 시간 동안 재생돼요. 비워 두면 소리 없이 진행해요.</p><label>집중 시간<input id="lf" type="url" placeholder="https://"></label><label>휴식 시간<input id="lr" type="url" placeholder="https://"></label>`;
+  $('#lf').value=S.lf;$('#lr').value=S.lr;
+  $('#lf').oninput=e=>S.lf=e.target.value;$('#lr').oninput=e=>S.lr=e.target.value;
+ }
+ gate();
+ $('#pv').onclick=()=>{st--;setup()};
+ $('#nx').onclick=()=>{if(!ok())return;if(st==4){save();start()}else{st++;setup()}};
+ V.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;if(i<=st||ok()){st=i;setup()}});
+}
+
+/* sound */
+function ac(){AC=AC||new(window.AudioContext||window.webkitAudioContext)();AC.resume();return AC}
+function nz(d){const b=AC.createBuffer(1,AC.sampleRate*d,AC.sampleRate),a=b.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=(Math.random()*2-1)*Math.pow(1-i/a.length,3);const s=AC.createBufferSource();s.buffer=b;return s}
+function burst(f,q,g,d){const c=ac(),s=nz(d),b=c.createBiquadFilter(),v=c.createGain();b.type='bandpass';b.frequency.value=f;b.Q.value=q;v.gain.value=g;s.connect(b).connect(v).connect(c.destination);s.start()}
+const tick=a=>burst(a?1500:1900,6,1.5,.05);
+function click(){burst(900,3,1.8,.08);const c=ac(),t=c.currentTime,o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(520,t);o.frequency.exponentialRampToValueAtTime(300,t+.07);g.gain.setValueAtTime(.5,t);g.gain.exponentialRampToValueAtTime(.001,t+.09);o.connect(g).connect(c.destination);o.start(t);o.stop(t+.1)}
+
+/* background music */
+const yid=u=>(u.match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/)||[])[1];
+const yc=(f,a=[])=>M&&M.yt&&M.el.contentWindow&&M.el.contentWindow.postMessage(JSON.stringify({event:'command',func:f,args:a}),'*');
+function stopM(){if(M){M.yt?M.el.remove():M.el.pause();M=null}}
+function music(p){
+ stopM();const u=(p.k=='focus'?S.lf:p.k=='rest'?S.lr:'').trim();if(!u)return;const id=yid(u);
+ if(id){const f=document.createElement('iframe');f.className='yt';f.allow='autoplay';f.title='배경음';f.src=`https://www.youtube-nocookie.com/embed/${id}?enablejsapi=1&autoplay=1&loop=1&playlist=${id}&controls=0`;f.onload=()=>{f.contentWindow.postMessage('{"event":"listening"}','*');yc('setVolume',[0]);yc('playVideo')};document.body.append(f);M={yt:1,el:f}}
+ else{const a=new Audio(u);a.loop=true;a.volume=0;a.play().catch(()=>{});M={el:a}}
+}
+function vol(p,ms){
+ if(!M||p.k=='prep')return;const v=Math.max(0,Math.min(1,(p.d*1000-ms)/5000,ms/5000));
+ M.yt?yc('setVolume',[Math.round(v*100)]):M.el.volume=v;
+}
+
+/* timer */
+const fmt=s=>{s=Math.max(0,Math.ceil(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),r=s%60,p=n=>String(n).padStart(2,'0');return(h?h+':':'')+p(m)+':'+p(r)};
+function start(){
+ ac();const f=S.focus,r=T()-f,ph=[{k:'prep',d:5}];
+ for(let i=1;i<=S.rep;i++)ph.push({k:'focus',d:f*60,set:i},{k:'rest',d:r*60,set:i});
+ R={ph,i:0,end:Date.now()+5000,paused:false,left:0,lt:99};
+ V.innerHTML=`<div class="card"><p class="sub" id="lb"></p><div class="rw">${ring(1)}<b class="big" id="tm"></b></div><p class="sub" id="sb"></p></div><div class="nav"><button class="ghost" id="ps">일시정지</button><button class="ghost" id="sp">끝내기</button></div>`;
+ $('#ps').onclick=pause;$('#sp').onclick=()=>{halt();setup()};
+ R.t=setInterval(step,200);step();
+}
+function step(){
+ if(R.paused)return;const p=R.ph[R.i],ms=R.end-Date.now(),sec=Math.ceil(ms/1000);
+ if(ms<=5000&&sec>0&&sec<R.lt){R.lt=sec;tick(sec%2)}
+ if(ms<=0){click();next();return}
+ $('#tm').textContent=fmt(ms/1000);
+ $('#pg').setAttribute('stroke-dashoffset',C*(1-ms/(p.d*1000)));
+ $('#lb').textContent=p.k=='prep'?`${S.name}님, 곧 시작해요`:p.k=='focus'?'집중':'휴식';
+ $('#sb').textContent=p.k=='prep'?'':`세트 ${p.set} / ${S.rep}`;
+ vol(p,ms);
+}
+function next(){
+ R.i++;R.lt=99;
+ if(R.i>=R.ph.length){halt();finish();return}
+ const p=R.ph[R.i];R.end=Date.now()+p.d*1000;
+ document.body.classList.toggle('rest',p.k=='rest');
+ music(p);step();
+}
+function pause(){
+ if(R.paused){R.end=Date.now()+R.left;R.paused=false;M&&(M.yt?yc('playVideo'):M.el.play());$('#ps').textContent='일시정지'}
+ else{R.left=R.end-Date.now();R.paused=true;M&&(M.yt?yc('pauseVideo'):M.el.pause());$('#ps').textContent='다시 시작'}
+}
+function halt(){clearInterval(R.t);stopM()}
+function finish(){
+ document.body.classList.remove('rest');
+ V.innerHTML=`<div class="card"><h2>수고했어요, ${S.name.replace(/[<>&]/g,'')}님</h2><p>${S.rep}세트, 총 ${dur(T()*S.rep)}을 마쳤어요.</p></div><div class="nav"><button class="btn" id="ag">다시 설정하기</button></div>`;
+ $('#ag').onclick=()=>{st=0;setup()};
+}
+pattern();setup();
+</script>
+</body>
+</html>
